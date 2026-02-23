@@ -36,17 +36,26 @@ func migrate(db *sql.DB) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS transactions (
 		id TEXT PRIMARY KEY,
+
+		idempotency_key TEXT NOT NULL UNIQUE,
+
 		amount INTEGER NOT NULL,
 		currency TEXT NOT NULL,
-		state TEXT NOT NULL DEFAULT 'PENDING',
+
+		state TEXT NOT NULL CHECK (
+			state IN ('PENDING', 'PROCESSING', 'UNKNOWN', 'RETRYING', 'SUCCESS', 'FAILED')
+		),
+
 		retries INTEGER NOT NULL DEFAULT 0,
 		max_retries INTEGER NOT NULL DEFAULT 5,
+
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		updated_at DATETIME NOT NULL
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_transactions_state ON transactions(state);
 	`
+
 	_, err := db.Exec(query)
 	return err
 }
